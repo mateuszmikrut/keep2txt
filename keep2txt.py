@@ -5,6 +5,8 @@ from os import path
 from os import getcwd
 from os import listdir
 from os import makedirs
+from os import stat
+from os import utime
 
 def getJsonFiles(a):
   if path.splitext(a)[1] == ".json":
@@ -21,6 +23,7 @@ def main():
     fname, fext = path.splitext(f)
     newname = "{}.txt".format(fname)
     srcfp = path.join(args.src_dir,f)
+    srcstat = stat(srcfp)
     with open(srcfp,'r') as scrfile:
       jo = json.loads(scrfile.read())
    
@@ -28,27 +31,27 @@ def main():
         dstfp = path.join(args.dst_dir,newname)
       else:
         if not 'labels' in jo:
-          folder = 'NoCategory'
-          dstfolder = path.join(args.dst_dir,folder)
+          dstfolder = args.dst_dir
         else:
           folder = jo['labels'][0]['name'] # Take only first tag
           dstfolder = path.join(args.dst_dir,folder)
-          if not path.exists(dstfolder):
-            makedirs(dstfolder)
+        
+        if not path.exists(dstfolder):
+          makedirs(dstfolder)
         dstfp = path.join(dstfolder,newname)
 
-      if 'listContent' in jo:
-        with open(dstfp,'w') as dstfile:
+      with open(dstfp,'w') as dstfile:
+        if 'listContent' in jo:
           for item in jo['listContent']:
             dstfile.write('[{}] {}\n'.format('x' if item['isChecked'] else ' ' ,item['text']))
-          dstfile.close()
-
-      elif 'textContent' in jo:
-        with open(dstfp,'w') as dstfile:
+        elif 'textContent' in jo:
           dstfile.write('{}\n'.format(jo['textContent']))
-          dstfile.close()
-      else:
-        print('UNKNOWN {}'.format(f))
+        else:
+          print('UNKNOWN {}'.format(f))
+        dstfile.close()
+      utime(dstfp, times=(srcstat.st_atime, srcstat.st_mtime))
+# times must have two floats (unix timestamps): (atime, mtime)
+
     
 if __name__ == "__main__":
   main()
